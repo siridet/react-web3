@@ -1,29 +1,22 @@
-import React, { useEffect, useState } from 'react' 
-import { initializeConnector } from '@web3-react/core'
-import { MetaMask } from '@web3-react/metamask'
+import React, { useEffect ,useState} from 'react'
 
-import {
+import { 
   AppBar, Toolbar, Typography, Button, Chip, Stack, Container, Card,
-  CardContent, TextField
+  CardContent, TextField, Divider
 } from '@mui/material';
 
-import { ethers } from 'ethers';
-import { formatEther } from '@ethersproject/units';
-import abi from './abi.json' 
+import { initializeConnector } from '@web3-react/core'
+import { MetaMask } from '@web3-react/metamask'
+import { ethers } from 'ethers'; 
+import abi from './abi.json'
 
 
-function App() {
-  const [metaMask, hooks] = initializeConnector((actions) => new MetaMask(actions))
+import { formatEther, parseUnits } from '@ethersproject/units';
 
+const [metaMask, hooks] = initializeConnector((actions) => new MetaMask(actions))
 const { useAccounts, useError, useIsActive, useProvider } = hooks
 const contractChain = 55556
-
-const provider = useProvider()
-const [isLoading, setIsLoading] = useState(true)
-const [balance, setBalance] = useState('')
-
 const contractAddress = '0xDd0bFE8A575765EEFeF21120dEF273244771bf6e'
-
 const getAddressTxt = (str, s = 6, e = 6) => {
   if (str) {
     return `${str.slice(0, s)}...${str.slice(str.length - e)}`;
@@ -31,18 +24,78 @@ const getAddressTxt = (str, s = 6, e = 6) => {
   return "";
 };
 
+function App() {
+  const [reiValue, setReiValue] = useState(0)
+
+  const handleSetReiValue = (event) => {
+    setReiValue(event.target.value)
+  }
+
+  const handleBuy = async () => {
+    if (reiValue === '' || parseFloat(reiValue) === 0) {
+      alert('Please enter REI')
+      return
+    }
+    try {
+      const signer = provider.getSigner()
+      const smartContract = new ethers.Contract(contractAddress, abi, signer)
+      const txHash = await smartContract.buy({
+        from: accounts[0],
+        value: parseUnits(reiValue, "ether")
+      })
+
+      smartContract.on("Buy", (from, to, tokens) => {
+        console.log(from, to, tokens, txHash);
+        setIsLoading(true)
+      });
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  const provider = useProvider()
+  const [isLoading, setIsLoading] = useState(true)
+  const [balance, setBalance] = useState('')
+
+
   const accounts = useAccounts()
   const connector = metaMask
   const isActive = useIsActive()
   const error = useError()
+  // useEffect(() => {
+  //   const fetchToken = async () => {
+  //     try {
+  //       const signer = provider.getSigner()
+  //       const smartContract = new ethers.Contract(contractAddress, abi, signer)
+  //       const myBalance = await smartContract.balanceOf(accounts[0])
+  //       setBalance(formatEther(myBalance))
+  //     } catch (err) {
+  //       console.log(err)
+  //     }
+  //   }
+
+  //   if (isLoading) {
+  //     void metaMask.connectEagerly()
+  //     setIsLoading(false)
+  //   }
+  //   if (isActive && !isLoading) {
+  //     fetchToken()
+  //   }
+  //   if (error) {
+  //     alert(error.message)
+  //   }
+
+  // }, [error, isLoading, isActive, accounts, provider])
 
   useEffect(() => {
+
     const fetchToken = async () => {
       try {
         const signer = provider.getSigner()
         const smartContract = new ethers.Contract(contractAddress, abi, signer)
         const myBalance = await smartContract.balanceOf(accounts[0])
         setBalance(formatEther(myBalance))
+
       } catch (err) {
         console.log(err)
       }
@@ -58,10 +111,6 @@ const getAddressTxt = (str, s = 6, e = 6) => {
       alert(error.message)
     }
 
-  }, [error, isLoading, isActive, accounts, provider])
-
-
-  useEffect(() => {
     void metaMask.connectEagerly()
     if (error) {
       alert(error.message)
@@ -94,7 +143,8 @@ const getAddressTxt = (str, s = 6, e = 6) => {
             :
             <Stack direction="row" spacing={1}>
               <Chip label={getAddressTxt(accounts[0])} />
-              <Button variant="contained" color="inherit"
+              <Button variant="contained"
+                color="inherit"
                 onClick={handleDisconnect}
               >
                 Disconnect
@@ -102,9 +152,24 @@ const getAddressTxt = (str, s = 6, e = 6) => {
             </Stack>
           }
         </Toolbar>
-      </AppBar>
+      </AppBar>  <br></br> 
+      
+      <Divider/>
+                  <Typography variant="body1">
+                    Buy MTK (1 REI = 10 MKT)
+                  </Typography>
+                  <TextField
+                    required
+                    id="outlined-required"
+                    label="REI"
+                    defaultValue=""
+                    type="number"
+                    onChange={handleSetReiValue}
+                  />
+                  <Button variant="contained" onClick={handleBuy}>Buy</Button>
+
       <Container maxWidth="sm" sx={{ mt: 2 }}>
-        {isActive &&
+        { isActive &&
           <div>
             <Card>
               <CardContent>
